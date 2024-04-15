@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Todo App</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrapper">
+  <div class="container">
+    <div class="todo-app">
+      <div class="input-container">
+        <input type="text" class="input-box" placeholder="Your Task" />
+        <button class="button">ADD</button>
+      </div>
+      <div class="task-container">
+        <ul class="list-container"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const button = document.querySelector(".button");
+const inputBox = document.querySelector(".input-box");
+const listContainer = document.querySelector(".list-container");
+
+async function fetchTasks() {
+  try {
+    inputBox.focus();
+    const response = await fetch('/api/v1/tasks/todo');
+    const tasks = await response.json();
+    renderTasks(tasks);
+  } catch (error) {
+    console.error('Error fetching tasks:', error);
+  }
+}
+async function updateTaskStatus(id, status) {
+  try {
+    const response = await fetch('/api/v1/updatetaskstatus', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ id, status })
+    });
+    if (response.ok) {
+      fetchTasks();
+    } else {
+      console.error('Failed to update task status:', response.statusText);
+    }
+  } catch (error) {
+    console.error('Error updating task status:', error);
+  }
+}
+
+function renderTasks(tasks){
+  listContainer.innerHTML = " ";
+  tasks.forEach(task =>{
+    const listItem = document.createElement('li');
+    listItem.textContent = task.title;
+    listItem.dataset.id = task.id;
+    if(task.status === '1'){
+      listItem.style.textDecoration = 'line-through';
+    }
+    createCrossAndCheckBox(listItem);
+    listContainer.append(listItem);
+  })
+}
+
+function createCrossAndCheckBox(listItem){
+  const cross = document.createElement("span");
+  cross.innerHTML = "\u00d7";
+  cross.className = "close";
+  listItem.append(cross);
+
+  const checkBox = document.createElement("input");
+  checkBox.className = "checked";
+  checkBox.type = "checkbox";
+  listItem.append(checkBox);
+
+  if(listItem.style.textDecoration === 'line-through'){
+    checkBox.checked = true;
+  }
+
+  cross.addEventListener("click",removeTask);
+  function removeTask(){
+    console.log(listItem.dataset.id);
+    const id = listItem.dataset.id;
+    deleteTask(id);
+  }
+  async function deleteTask(id) {
+  try {
+    const response = await fetch('/api/v1/deletetask', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ id })
+    });
+    if (response.ok) {
+      fetchTasks();
+    } else {
+      console.error('Failed to delete task:', response.statusText);
+    }
+  } catch (error) {
+    console.error('Error deleting task:', error);
+  }
+}
+  checkBox.addEventListener("change",checkedOrUnchecked);
+  async function checkedOrUnchecked(event){ 
+    const id = listItem.dataset.id;
+    const status = event.target.checked ? "1" : "0";
+    try{
+      await updateTaskStatus(id,status);
+    }
+    catch(error){
+      console.error("error updating task status:", error);
+    }
+  }
+}
+
+button.addEventListener("click", () => {
+  const title = inputBox.value;
+  if (title === "") {
+    alert("You must write something!");
+  } else {
+    addTask(title);
+    inputBox.value = "";
+  }
+});
+
+inputBox.addEventListener("keypress", (e) => {
+  if(e.key === "Enter"){
+    const title = inputBox.value;
+    if (title === "") {
+      alert("You must write something!");
+    } else {
+      addTask(title);
+      inputBox.value = "";
+    }
+  }
+});
+
+async function addTask(title) {
+  try {
+    const response = await fetch('/api/v1/addtask', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        title: title,
+        status: "0"
+      })
+    });
+    if (response.ok) {
+      fetchTasks();
+    } else {
+      console.error('Failed to add task:', response.statusText);
+    }
+  } catch (error) {
+    console.error('Error adding task:', error);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", fetchTasks);
+</script>
+</body>
+</html>
